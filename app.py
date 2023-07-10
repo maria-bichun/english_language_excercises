@@ -8,7 +8,7 @@ with open("prep.json") as json_file :
   prep_excercises = json.load(json_file)
 
 st.header('English language excercises out of a text')
-st.write('Here you can practice your English solving excercises generated from a text. By design you should be able to upload a text of yours, but waiting for this cool feature to be added you can use The Little Red Cap by Wilhelm Grimm')
+st.write('Here you can practice your English solving excercises generated from a text. By design you should be able to upload a text of yours. Waiting for this cool feature to be implemented you can enjoy excercises made of The Little Red Cap by Wilhelm Grimm')
 
 st.subheader('Choose the right past tense')
 
