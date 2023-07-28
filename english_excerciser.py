@@ -16,6 +16,10 @@ nlp = spacy.load("en_core_web_sm")
 class EnglishExcerciser():
 
   def __init__(self, text):
+    """(self, str) -> (self)
+    builds df out of a str text
+    initiates an empty list of sentences already used in excercises (not to produce excercises based on the same sentences)
+    """
     self.df = self.build_df(text)
     self.vocab_selection_options_to_df()
     self.verbs_to_df()
@@ -25,28 +29,38 @@ class EnglishExcerciser():
 
   ###################
   # utils
-  # returns part of speech. use for found similar words to filter parts of speech
   def get_pos(self, x):
+    """(str) -> (str)
+    returns part of speech. use for found similar words to filter parts of speech
+    """
     words = nlp(x)
     for word in words:
       return spacy.explain(word.pos_)
     
-  # returns Sing or Plur
   def get_num(self, x):
+    """(str) -> (str)
+    returns Sing or Plur
+    """
     words = nlp(x)
     for word in words:
       return word.morph.get('Number')
     
-  # returns verb form
   def get_form(self, x):
+    """(str) -> (str)
+    returns verb form
+    """
     words = nlp(x)
     for word in words:
       return word.morph.get('VerbForm')
 
   ###################
   # functions
-  # finds only meaningful POS (noun, adv, adj, verb) by row number
   def find_main_pos(self, row_number, pos):
+    """(int, str) -> (str list, str list, int list) list
+    finds only meaningful POS (noun, adv, adj, verb) by row number.
+    returns list of all words of the given POS in the sentence, list of POS and list of indices,
+    so that the resultng words could be found in the sentence
+    """
     all_words = np.array([str(word).lower() for word in self.df['wordlist'][row_number]])
     values = np.array(self.df['pos'][row_number])
     sent = self.df['raw'][row_number]
@@ -55,8 +69,12 @@ class EnglishExcerciser():
     idx = np.where(values == searchval)[0]
     return([(all_words[i], values[i], [word for word in self.df['wordlist'][row_number]][i].i - sent.start) for i in sorted(idx)])
 
-  # generates similar options out of the given word
-  def get_options(self, original_word, pos, num_options=2):    
+  def get_options(self, original_word, pos, num_options=2):   
+      """(str, str, int) -> (str, list, float) tuple
+      generates similar options out of the given word of a given part of speech.
+      returns the original word, list of similar words with the original added and shuffled 
+      along with the calculated quality so that different sets of similar words could be later compared and the best one chosen.
+      """ 
       
       # A: find similar by word
       result = word_vectors.similar_by_word(original_word)
@@ -89,8 +107,12 @@ class EnglishExcerciser():
       quality = num_options + 1 - sum([x[1] for x in dist_sorted[:num_options]])
       return original_word, alts, quality
 
-  # returns lists of corrects and options by sentence of the df
   def get_vocab_selection(self, pos, num_options=2):
+    """(str, int) -> (str list, (str list) list, int list) tuple
+    returns lists of corrects and options of a given POS for the whole dataframe.
+    first gets lists of options for all the words of the desired POS then chooses best one by quality.
+    index of the correct word is added so that it could be found within the original sentence
+    """
 
     # get list of a given pos for every sentence
     wordsets = [self.find_main_pos(row, pos) for row in range(self.df.shape[0])]
@@ -115,9 +137,11 @@ class EnglishExcerciser():
     options = [x[1] for x in bests]
     indices = [x[3] for x in bests]
     return corrects, options, indices
-
-  # adds columns with vocabulary selection corrects and options to the df
+  
   def vocab_selection_options_to_df(self):
+    """(self) -> (self)
+    adds columns with vocabulary selection corrects, options and indices to the df
+    """
 
     for pos in ['noun', 'verb', 'adverb', 'adjective']:
 
@@ -125,9 +149,13 @@ class EnglishExcerciser():
       self.df[pos+'_vocab_selection_correct'] = selector[0]
       self.df[pos+'_vocab_selection_options'] = selector[1]
       self.df[pos+'_vocab_selection_idx'] = selector[2]
-
-  # finds verbs and combinations auxiliary-verb
+  
   def find_verbs(self, row_number):
+    """(int) -> (str list, int, int list)
+    finds verbs and combinations auxiliary-verb in a given row of the dataframe.
+    returns list of verbs, 1 for analytic verb form or 0 for synthetic and list of indices
+    used to find the verbs in the sentence
+    """
     all_words = np.array([str(word).lower() for word in self.df['wordlist'][row_number]])
     values = np.array(self.df['pos'][row_number])
     lemmas = np.array(self.df['lemma'][row_number])
@@ -156,16 +184,20 @@ class EnglishExcerciser():
       result = [np.nan, np.nan, np.nan]
 
     return result
-
-  # adds columns with verbs to the df
+  
   def verbs_to_df(self):
+    """(self) -> (self)
+    adds columns with verbs to the df
+    """
     verb_finder = [self.find_verbs(row) for row in range(self.df.shape[0])]
     self.df['verbs'] = [x[0] for x in verb_finder]
     self.df['analytic_verb_form'] = [x[1] for x in verb_finder]
     self.df['verbs_idx'] = [x[2] for x in verb_finder]
-
-  # finds lemma of a verb listed in column 'verbs'. not to use with nan values in 'verbs'
+  
   def find_verbs_lemma(self, verb, num_row):
+    """(str, int) -> (str)
+    finds lemma of a verb listed in column 'verbs'. not to use with nan values in 'verbs'
+    """
     verblist = self.df['verbs'][num_row]
     order_num = verblist.index(verb)
     if num_row in self.df[self.df['analytic_verb_form'] == 1].index.to_list() and len(verb.split()) > 1:
@@ -173,8 +205,10 @@ class EnglishExcerciser():
     else: sentence_idx = self.df['verbs_idx'][num_row][order_num]
     return self.df['lemma'][num_row][sentence_idx].lower()
 
-  # finds forms of the verb BE
   def find_be(self, row_number):
+    """(int) -> ((str) list, (int) list) tuple
+    finds forms of the verb BE
+    """
     all_words = np.array([str(word).lower() for word in self.df['wordlist'][row_number]])
     lemmas = np.array(self.df['lemma'][row_number])
     sent = self.df['raw'][row_number]
@@ -185,14 +219,18 @@ class EnglishExcerciser():
               [np.array([word for word in self.df['wordlist'][row_number]])[i].i - sent.start for i in sorted(idx) if all_words[i] not in ["'s", "'re", "'m"]])
     return( result if len(result[0]) > 0 else (np.nan, np.nan))
 
-  # adds columns with be to the df
   def be_to_df(self):
+    """(self) -> (self)
+    adds columns with be to the df
+    """
     be_finder = [self.find_be(row) for row in range(self.df.shape[0])]
     self.df['be'] = [x[0] for x in be_finder]
     self.df['be_idx'] = [x[1] for x in be_finder]
 
-  # finds prepositions
   def find_prep(self, row_number):
+    """(int) -> ((str) list, (int) list) tuple
+    finds prepositions
+    """
     all_words = np.array([str(word).lower() for word in self.df['wordlist'][row_number]])
     poses = np.array(self.df['pos'][row_number])
     sent = self.df['raw'][row_number]
@@ -203,15 +241,18 @@ class EnglishExcerciser():
     [np.array([word for word in self.df['wordlist'][row_number]])[i].i - sent.start for i in sorted(idx) if all_words[i] in ['on', 'in', 'of', 'to', 'at', 'for', 'from', 'under', 'with']])
     return( result if len(result[0]) > 0 else (np.nan, np.nan))
 
-  # adds columns with prepositions to the df
   def prep_to_df(self):
+    """(self) -> (self)
+    adds columns with prepositions to the df
+    """
     prep_finder = [self.find_prep(row) for row in range(self.df.shape[0])]
     self.df['prepositions'] = [x[0] for x in prep_finder]
     self.df['prepositions_idx'] = [x[1] for x in prep_finder]
 
-  ###################
-  # build df
   def build_df(self, text):    
+    """(str) -> (pd.dataframe)
+    initiates dataframe from str text
+    """
 
     sentences = sentzer(text)
 
@@ -225,8 +266,10 @@ class EnglishExcerciser():
 
   ###################
   # excercise generators
-  # getting vocabulary selection excercises
   def get_vocab_selection_excercises(self, num_ex=6):
+    """(int) -> (dict)
+    getting vocabulary selection excercises
+    """
     excercises = []
     used_words = []
     main_pos = {'noun': 0.35, 'verb': 0.35, 'adjective': 0.2, 'adverb': 0.1}
@@ -273,8 +316,10 @@ class EnglishExcerciser():
 
     return excercises
 
-  # getting past tenses excercises
   def get_past_tenses_excercises(self, num_ex=6):
+    """(int) -> (dict)
+    getting past tenses excercises
+    """
     excercises = []
     tenses = {'past_simple': 0.4, 'past_cont': 0.35, 'past_perf': 0.25}
 
@@ -396,8 +441,10 @@ class EnglishExcerciser():
 
     return excercises
 
-  # getting active/passive excercises
   def get_active_passive_excercises(self, num_ex=6):
+    """(int) -> (dict)
+    getting active/passive excercises
+    """
     excercises = []
     voices = {'active': 0.6, 'passive': 0.4}
 
@@ -498,8 +545,10 @@ class EnglishExcerciser():
 
     return excercises
 
-  # getting be form excercises
   def get_be_excercises(self, num_ex=6):
+    """(int) -> (dict)
+    getting be form excercises
+    """
     excercises = []
 
     while len(excercises) < num_ex:
@@ -531,8 +580,10 @@ class EnglishExcerciser():
 
     return excercises
 
-  # getting prepositions excercises
   def get_prep_excercises(self, num_ex=6):
+    """(int) -> (dict)
+    getting prepositions excercises
+    """
     excercises = []
 
     while len(excercises) < num_ex:
@@ -563,3 +614,9 @@ class EnglishExcerciser():
         self.used_rows.append(num_row)
 
     return excercises
+  
+  def reset_used_rows(self):
+    """(self) -> (self)
+    reset self.used_rows to start generating excercises again
+    """
+    self.used_rows = []
