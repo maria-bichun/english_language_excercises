@@ -3,17 +3,14 @@ import pandas as pd
 import numpy as np
 from spacy.lang.en import English
 import random
-import gensim.downloader as api
 from pyinflect import getInflection
-
-word_vectors = api.load('glove-wiki-gigaword-100')
 
 sentzer = English()
 sentzer.add_pipe('sentencizer')
 
 nlp = spacy.load("en_core_web_sm")
 
-class EnglishExcerciser():
+class GrammarExcerciser():
 
   def __init__(self, text):
     """(self, str) -> (self)
@@ -21,7 +18,6 @@ class EnglishExcerciser():
     initiates an empty list of sentences already used in excercises (not to produce excercises based on the same sentences)
     """
     self.df = self.build_df(text)
-    self.vocab_selection_options_to_df()
     self.verbs_to_df()
     self.be_to_df()
     self.prep_to_df()
@@ -55,103 +51,6 @@ class EnglishExcerciser():
 
   ###################
   # functions
-  def find_main_pos(self, row_number, pos):
-    """(int, str) -> (str list, str list, int list) list
-    finds only meaningful POS (noun, adv, adj, verb) by row number.
-    returns list of all words of the given POS in the sentence, list of POS and list of indices,
-    so that the resultng words could be found in the sentence
-    """
-    all_words = np.array([str(word).lower() for word in self.df['wordlist'][row_number]])
-    values = np.array(self.df['pos'][row_number])
-    sent = self.df['raw'][row_number]
-
-    searchval = pos
-    idx = np.where(values == searchval)[0]
-    return([(all_words[i], values[i], [word for word in self.df['wordlist'][row_number]][i].i - sent.start) for i in sorted(idx) if str(all_words[i]).isalpha() and len(str(all_words[i])) > 1])
-
-  def get_options(self, original_word, pos, num_options=2):   
-      """(str, str, int) -> (str, list, float) tuple
-      generates similar options out of the given word of a given part of speech.
-      returns the original word, list of similar words with the original added and shuffled 
-      along with the calculated quality so that different sets of similar words could be later compared and the best one chosen.
-      """ 
-      
-      # A: find similar by word
-      result = word_vectors.similar_by_word(original_word)
-      a = {x[0] for x in result[:15]}
-
-      # B: find similar using pairs
-      pairs = [('good', 'bad')]
-      result = []
-      for pair in pairs:
-        wordlist = word_vectors.most_similar(positive=[original_word, pair[0]], negative=pair[1])[:5]
-        result.extend(wordlist)
-      b = set([x[0] for x in result])
-      total = a|b
-
-      # filter
-      if pos == 'noun':
-        filtered = {word for word in total if pos in self.get_pos(word) and 'Sing' in self.get_num(word)}
-      elif pos == 'verb':
-        filtered = {word for word in total if pos in self.get_pos(word) and self.get_form(original_word) == self.get_form(word)}
-      else: filtered = {word for word in total if pos == self.get_pos(word)}
-
-      # find closest
-      distances = {word: word_vectors.distance('girl', word) for word in filtered}
-      dist_sorted = sorted(distances.items(), key=lambda x:x[1])
-
-      # add original word and shuffle
-      alts = [x[0] for x in dist_sorted[:num_options]]
-      alts.append(original_word)
-      random.shuffle(alts)
-      quality = num_options + 1 - sum([x[1] for x in dist_sorted[:num_options]])
-      return original_word, alts, quality
-
-  def get_vocab_selection(self, pos, num_options=2):
-    """(str, int) -> (str list, (str list) list, int list) tuple
-    returns lists of corrects and options of a given POS for the whole dataframe.
-    first gets lists of options for all the words of the desired POS then chooses best one by quality.
-    index of the correct word is added so that it could be found within the original sentence
-    """
-
-    # get list of a given pos for every sentence
-    wordsets = [self.find_main_pos(row, pos) for row in range(self.df.shape[0])]
-
-    bests = []
-
-    for wordset in wordsets:
-      opt_list = []
-      for word in wordset:
-        text, pos, idx = word
-        text = str(text)
-        try:
-          options = self.get_options(text, pos, num_options)
-        except:
-          options=(word, [], 0)
-        if len(options[1]) == 3:
-          original_word, alts, quality = options
-          options = original_word, alts, quality, [idx]
-          opt_list.append(options)
-      if len(opt_list) > 0:
-        best = max(opt_list, key=lambda x:x[2])
-        bests.append(best)
-      else: bests.append((np.nan, np.nan, np.nan, np.nan))
-    corrects = [x[0] for x in bests]
-    options = [x[1] for x in bests]
-    indices = [x[3] for x in bests]
-    return corrects, options, indices
-  
-  def vocab_selection_options_to_df(self):
-    """(self) -> (self)
-    adds columns with vocabulary selection corrects, options and indices to the df
-    """
-
-    for pos in ['noun', 'verb', 'adverb', 'adjective']:
-
-      selector = self.get_vocab_selection(pos)
-      self.df[pos+'_vocab_selection_correct'] = selector[0]
-      self.df[pos+'_vocab_selection_options'] = selector[1]
-      self.df[pos+'_vocab_selection_idx'] = selector[2]
   
   def find_verbs(self, row_number):
     """(int) -> (str list, int, int list)
@@ -269,56 +168,6 @@ class EnglishExcerciser():
 
   ###################
   # excercise generators
-  def get_vocab_selection_excercises(self, num_ex=6):
-    """(int) -> (dict)
-    getting vocabulary selection excercises
-    """
-    excercises = []
-    used_words = []
-    main_pos = {'noun': 0.35, 'verb': 0.35, 'adjective': 0.2, 'adverb': 0.1}
-
-    while len(excercises) < num_ex:
-      rows_to_check = set(range(0, self.df.shape[0])) - set(self.used_rows)
-      found = False
-      pos = np.random.choice(list(main_pos.keys()), size=1, p=list(main_pos.values())).item()
-      
-      while not found:
-        
-        if len(rows_to_check) == 0:
-            weight_to_share = main_pos[pos] / (len(main_pos) - 1)
-            main_pos.pop(pos)
-            for p in main_pos:
-              main_pos[p] += weight_to_share
-            break
-        
-        num_row = random.choice(list(rows_to_check))
-        rows_to_check.discard(num_row)
-
-        if (len(self.df['raw'][num_row]) > 8) and \
-        not (self.df[pos+'_vocab_selection_correct'][num_row] in used_words) and \
-        not (self.df[pos+'_vocab_selection_correct'][num_row] is np.nan):
-
-          correct = self.df[pos+'_vocab_selection_correct'][num_row]
-          options = self.df[pos+'_vocab_selection_options'][num_row]
-          random.shuffle(options)
-          index = self.df[pos+'_vocab_selection_idx'][num_row][0]
-
-          raw = self.df['raw'][num_row]
-          sentence = str(raw[:index]).strip()+' _____ '+str(raw[index+1:])
-          
-          ex = {'sentence': sentence,
-                'options' : [options], 
-                'answers' : correct,
-                'result'  : [''],
-                'total'   : 0
-              }
-          excercises.append(ex)
-          self.used_rows.append(num_row)
-          used_words.append(correct)
-          found = True
-
-    return excercises
-
   def get_past_tenses_excercises(self, num_ex=6):
     """(int) -> (dict)
     getting past tenses excercises
