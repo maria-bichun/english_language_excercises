@@ -1,8 +1,8 @@
 import streamlit as st
 import json
 
-with open("past.json") as json_file :
-  past_excercises = json.load(json_file)
+with open("past.json") as json_file:
+    past_excercises = json.load(json_file)
 
 with open("prep.json") as json_file :
   prep_excercises = json.load(json_file)
@@ -10,20 +10,32 @@ with open("prep.json") as json_file :
 st.header('English language excercises out of a text')
 st.write('Here you can practice your English solving excercises generated from a text. By design you should be able to upload a text of yours. Waiting for this cool feature to be implemented you can enjoy excercises made of The Little Red Cap by Wilhelm Grimm')
 
+
+# def ex_getter():
+#     if text:
+#         st.write('hello')
+       
+
+
+# text = st.text_area(label='put your text here')
+# st.button('Get excercises', on_click=ex_getter)
+
+
 st.subheader('Choose the right past tense')
+
 
 for task in past_excercises:
     col1, col2 = st.columns(2)
     with col1:
         st.write('')
         st.write(task['sentence'])
-        
+            
     with col2:
         for i in range(len(task['options'])):
             option = task['options'][i]
             task['result'][i] = st.selectbox('nolabel', 
-                                             ['–––'] + option, 
-                                             label_visibility="hidden")
+                                            ['–––'] + option, 
+                                            label_visibility="hidden")
             if task['result'][i] == '–––':
                 pass
             elif task['result'][i] == task['answers'][i]:

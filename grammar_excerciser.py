@@ -190,7 +190,7 @@ class GrammarExcerciser():
               tenses[t] += weight_to_share
             break
           num_row = random.choice(list(search))
-          search.discard(num_row)
+          search.discard(num_row)          
           for verb in self.df['verbs'][num_row]:
             if (len(verb.split()) > 1) and \
             (verb.split()[0] in ['was', 'were']) and \
@@ -232,6 +232,9 @@ class GrammarExcerciser():
             if verb == pastform:
               found = True
 
+      if len(self.df['raw'][num_row]) < 8:
+        continue
+
       all_verbs = self.df['verbs'][num_row]
       corrects = []
       options = []
@@ -268,6 +271,9 @@ class GrammarExcerciser():
             options.append(opts)
             indices.append(self.df['verbs_idx'][num_row][i])
 
+      if len(corrects) == 0:
+        continue
+      
       raw = self.df['raw'][num_row]
 
       pieces = []
@@ -304,6 +310,7 @@ class GrammarExcerciser():
       rows_to_check = set(range(0, self.df.shape[0])) - set(self.used_rows)
       found = False
       voice = np.random.choice(list(voices.keys()), size=1, p=list(voices.values())).item()
+      num = None
 
       if voice == 'passive':
         search = rows_to_check & set(self.df[self.df['analytic_verb_form'] == 1].index)
@@ -311,7 +318,6 @@ class GrammarExcerciser():
           if len(search) == 0:
             weight_to_share = voices[voice] / (len(voices) - 1)
             voices.pop(voice)
-            print(f'{voice} popped')
             for v in voices:
               voices[v] += weight_to_share
             break
@@ -330,7 +336,6 @@ class GrammarExcerciser():
           if len(search) == 0:
             weight_to_share = voices[voice] / (len(voices) - 1)
             voices.pop(voice)
-            print(f'{voice} popped')
             for v in voices:
               voices[v] += weight_to_share
             break
@@ -345,6 +350,8 @@ class GrammarExcerciser():
               found = True
               num = num_row
 
+      if not num:
+        continue
       all_verbs = self.df['verbs'][num]
       corrects = []
       options = []
@@ -357,7 +364,7 @@ class GrammarExcerciser():
           pastform = 0
         if (len(verb.split()) > 1) and \
           (verb.split()[0] in ['was', 'were', 'be', 'is', 'are', 'am']) and \
-          (verb.split()[1] == getInflection(self.find_verbs_lemma(verb, num_row), 'VBN')[0]):
+          (verb.split()[1] == getInflection(self.find_verbs_lemma(verb, num), 'VBN')[0]):
             main_verb = self.find_verbs_lemma(verb, num)
             opts = [getInflection(main_verb, 'VBD')[0], verb]
             random.shuffle(opts)
