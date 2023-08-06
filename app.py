@@ -1,6 +1,11 @@
 import streamlit as st
 import json
 from grammar_excerciser import GrammarExcerciser
+import subprocess
+
+@st.cache_resource
+def download_en_core_web_sm():
+    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
 
 if 'stage' not in st.session_state:
     st.session_state['stage'] = 0
