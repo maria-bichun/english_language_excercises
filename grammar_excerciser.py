@@ -4,11 +4,13 @@ import numpy as np
 from spacy.lang.en import English
 import random
 from pyinflect import getInflection
+import en_core_web_sm
 
 sentzer = English()
 sentzer.add_pipe('sentencizer')
 
-nlp = spacy.load("en_core_web_sm")
+# nlp = spacy.load("en_core_web_sm")
+nlp = en_core_web_sm.load()
 
 class GrammarExcerciser():
 

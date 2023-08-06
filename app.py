@@ -2,8 +2,6 @@ import streamlit as st
 import json
 from grammar_excerciser import GrammarExcerciser
 
-
-
 if 'stage' not in st.session_state:
     st.session_state['stage'] = 0
 
@@ -39,14 +37,16 @@ def set_stage_default_text():
 # with open("past.json") as json_file:
 #     past_excercises = json.load(json_file)
 
-with open("prep.json") as json_file :
-  prep_excercises = json.load(json_file)
+# with open("prep.json") as json_file :
+#   prep_excercises = json.load(json_file)
 
 st.header('English language excercises out of a text')
 st.write('Here you can practice your English solving excercises generated from a text. By design you should be able to upload a text of yours. Waiting for this cool feature to be implemented you can enjoy excercises made of The Little Red Cap by Wilhelm Grimm')
 
-text = st.text_area(label='Put your text here')
-st.button('Get excercises', on_click=set_stage_upload_text)
+with st.form('starting_form'):
+    text = st.text_area(label='Put your text here')
+    st.form_submit_button('Get excercises', on_click=set_stage_upload_text)
+    
 st.button('Use default text', on_click=set_stage_default_text)
 
 if st.session_state['stage'] >= 1:
