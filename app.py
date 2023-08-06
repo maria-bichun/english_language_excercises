@@ -18,8 +18,10 @@ def set_stage(i):
 
 def set_stage_upload_text():
     set_stage(1)
-    st.session_state['user_text'] = True
+    ge = GrammarExcerciser(text)
     st.write('generate excercises out of your text')
+
+    st.session_state['past_excercises'] = ge.get_past_tenses_excercises(2)
 
 def set_stage_default_text():
     set_stage(1)
@@ -63,23 +65,31 @@ if st.session_state['stage'] >= 1:
                     option = task['options'][i]
                     task['result'][i] = st.selectbox('nolabel', 
                                                     ['–––'] + option, 
-                                                    label_visibility="hidden")
-                    # if task['result'][i] == '–––':
-                    #     pass
-                    # elif task['result'][i] == task['answers'][i]:
-                    #     st.success('', icon="✅")
-                    # else:
-                    #     st.error('', icon="😟")
-            # task['total'] = task['result'] == task['answers']    
+                                                    label_visibility="hidden")                    
             '---'    
 
-        submitted = st.form_submit_button("Submit")
-        if submitted:
-            for task in st.session_state['past_excercises']:
-                for i in range(len(task['options'])):
-                    if task['result'][i] == task['answers'][i]:
-                        task['total'] += 1                    
-            st.write(f"{sum([task['total'] for task in st.session_state['past_excercises']])} correct answers out of {sum([len(task['result']) for task in st.session_state['past_excercises']])}")
+        st.form_submit_button("Submit", on_click=set_stage, args=[2])
+        
+if st.session_state['stage'] >= 2:
+    for task in st.session_state['past_excercises']:
+        for i in range(len(task['options'])):
+            if task['result'][i] == task['answers'][i]:
+                task['total'] += 1                    
+    st.write(f"{sum([task['total'] for task in st.session_state['past_excercises']])} correct answers out of {sum([len(task['result']) for task in st.session_state['past_excercises']])}")
+
+    for task in st.session_state['past_excercises']:
+        sentence_slices = task['sentence'].split('_____')
+        correct_sent = []
+        for i in range(len(task['options'])):
+            correct_sent.append(sentence_slices[i])
+            correct_sent.append(f"**:green[{task['answers'][i]}]**")
+            if task['result'][i] != task['answers'][i]:
+                correct_sent.append(f"_(you've chosen **:red[{task['result'][i]}]**)_")
+        correct_sent.append(sentence_slices[-1])
+        st.write(' '.join(correct_sent))
+
+    st.button('Try again', on_click=set_stage, args=[0])
+
     
 
     # st.subheader('Fill in the gaps. Type the missing preposition')
