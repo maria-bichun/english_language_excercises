@@ -181,12 +181,16 @@ class GrammarExcerciser():
       rows_to_check = set(range(0, self.df.shape[0])) - set(self.used_rows)
       found = False
       tense = np.random.choice(list(tenses.keys()), size=1, p=list(tenses.values())).item()
+      num = None
 
       if tense == 'past_cont':
         search = rows_to_check & set(self.df[self.df['analytic_verb_form'] == 1].index)        
         while not found:
           if len(search) == 0:
-            weight_to_share = tenses[tense] / (len(tenses) - 1)
+            if len(tenses) > 1:
+              weight_to_share = tenses[tense] / (len(tenses) - 1)
+            else: 
+              weight_to_share = tenses[tense]
             tenses.pop(tense)
             for t in tenses:
               tenses[t] += weight_to_share
@@ -198,12 +202,16 @@ class GrammarExcerciser():
             (verb.split()[0] in ['was', 'were']) and \
             (verb.endswith('ing')):
               found = True
+              num = num_row
 
       elif tense == 'past_perf':
         search = rows_to_check & set(self.df[self.df['analytic_verb_form'] == 1].index)
         while not found:
           if len(search) == 0:
-            weight_to_share = tenses[tense] / (len(tenses) - 1)
+            if len(tenses) > 1:
+              weight_to_share = tenses[tense] / (len(tenses) - 1)
+            else: 
+              weight_to_share = tenses[tense]
             tenses.pop(tense)
             for t in tenses:
               tenses[t] += weight_to_share
@@ -214,12 +222,16 @@ class GrammarExcerciser():
             if (len(verb.split()) > 1) and \
             (verb.split()[0] == 'had'):
               found = True
+              num = num_row
         
       else:      # past_simple
         search = rows_to_check & set(self.df[(self.df['analytic_verb_form'] == 0) & (self.df['verbs'] is not np.nan)].index)
         while not found:
           if len(search) == 0:
-            weight_to_share = tenses[tense] / (len(tenses) - 1)
+            if len(tenses) > 1:
+              weight_to_share = tenses[tense] / (len(tenses) - 1)
+            else: 
+              weight_to_share = tenses[tense]
             tenses.pop(tense)
             for t in tenses:
               tenses[t] += weight_to_share
@@ -233,50 +245,63 @@ class GrammarExcerciser():
               pastform = 0
             if verb == pastform:
               found = True
+              num = num_row
 
-      if len(self.df['raw'][num_row]) < 8:
+      if not num:
         continue
+      if len(self.df['raw'][num]) < 8:
+        continue
+      
 
-      all_verbs = self.df['verbs'][num_row]
+      all_verbs = self.df['verbs'][num]
       corrects = []
       options = []
       indices = []
       for i in range(len(all_verbs)):
         verb = all_verbs[i]
         try:
-          pastform = getInflection(self.find_verbs_lemma(verb, num_row), 'VBD')[0]
+          pastform = getInflection(self.find_verbs_lemma(verb, num), 'VBD')[0]
         except:
           pastform = 0
         if (len(verb.split()) > 1) and \
             (verb.split()[0] in ['was', 'were']) and \
             (verb.endswith('ing')):
-            main_verb = self.find_verbs_lemma(verb, num_row)
-            opts = [getInflection(main_verb, 'VBD')[0], 'had ' + getInflection(main_verb, 'VBN')[0], verb]
-            random.shuffle(opts)
-            corrects.append(verb)
-            options.append(opts)
-            indices.append(self.df['verbs_idx'][num_row][i])
+            main_verb = self.find_verbs_lemma(verb, num)
+            try:
+              opts = [getInflection(main_verb, 'VBD')[0], 'had ' + getInflection(main_verb, 'VBN')[0], verb]
+              random.shuffle(opts)
+              corrects.append(verb)
+              options.append(opts)
+              indices.append(self.df['verbs_idx'][num][i])
+            except:
+              pass
           
         elif (len(verb.split()) > 1) and (verb.split()[0] == 'had'):
-            main_verb = self.find_verbs_lemma(verb, num_row)
-            opts = [getInflection(main_verb, 'VBD')[0], 'was ' + getInflection(main_verb, 'VBG')[0], verb]
-            random.shuffle(opts)
-            corrects.append(verb)
-            options.append(opts)
-            indices.append(self.df['verbs_idx'][num_row][i])
+            main_verb = self.find_verbs_lemma(verb, num)
+            try:
+              opts = [getInflection(main_verb, 'VBD')[0], 'was ' + getInflection(main_verb, 'VBG')[0], verb]
+              random.shuffle(opts)
+              corrects.append(verb)
+              options.append(opts)
+              indices.append(self.df['verbs_idx'][num][i])
+            except:
+              pass
 
         elif verb == pastform:
-            main_verb = self.find_verbs_lemma(verb, num_row)
-            opts = ['was ' + getInflection(main_verb, 'VBG')[0], 'had ' + getInflection(main_verb, 'VBN')[0], verb]
-            random.shuffle(opts)
-            corrects.append(verb)
-            options.append(opts)
-            indices.append(self.df['verbs_idx'][num_row][i])
+            main_verb = self.find_verbs_lemma(verb, num)
+            try:
+              opts = ['was ' + getInflection(main_verb, 'VBG')[0], 'had ' + getInflection(main_verb, 'VBN')[0], verb]
+              random.shuffle(opts)
+              corrects.append(verb)
+              options.append(opts)
+              indices.append(self.df['verbs_idx'][num][i])
+            except:
+              pass
 
       if len(corrects) == 0:
-        continue
+        continue     
       
-      raw = self.df['raw'][num_row]
+      raw = self.df['raw'][num]
 
       pieces = []
       pieces.append(raw[:indices[0]])
@@ -297,7 +322,7 @@ class GrammarExcerciser():
             'total'   : 0
             }
       excercises.append(ex)
-      self.used_rows.append(num_row)
+      self.used_rows.append(num)
 
     return excercises
 
@@ -318,7 +343,10 @@ class GrammarExcerciser():
         search = rows_to_check & set(self.df[self.df['analytic_verb_form'] == 1].index)
         while not found:
           if len(search) == 0:
-            weight_to_share = voices[voice] / (len(voices) - 1)
+            if len(voices) > 1:
+              weight_to_share = voices[voice] / (len(voices) - 1)
+            else: 
+              weight_to_share = voices[voice]            
             voices.pop(voice)
             for v in voices:
               voices[v] += weight_to_share
@@ -336,7 +364,10 @@ class GrammarExcerciser():
         search = rows_to_check & set(self.df[(self.df['analytic_verb_form'] == 0) & (self.df['verbs'] is not np.nan)].index)
         while not found:
           if len(search) == 0:
-            weight_to_share = voices[voice] / (len(voices) - 1)
+            if len(voices) > 1:
+              weight_to_share = voices[voice] / (len(voices) - 1)
+            else: 
+              weight_to_share = voices[voice]            
             voices.pop(voice)
             for v in voices:
               voices[v] += weight_to_share

@@ -1,11 +1,4 @@
 import streamlit as st
-import json
-import subprocess
-
-@st.cache_resource
-def download_en_core_web_sm():
-    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
-
 from grammar_excerciser import GrammarExcerciser
 
 if 'stage' not in st.session_state:
@@ -14,53 +7,68 @@ if 'stage' not in st.session_state:
 if 'past_excercises' not in st.session_state:
     st.session_state['past_excercises'] = None
 
-# if 'user_text' not in st.session_state:
-#     st.session_state['user_text'] = False
+if 'error_type' not in st.session_state:
+    st.session_state['error_type'] = None
+
+if 'text' not in st.session_state:
+    st.session_state['text'] = ''
+
+# read file into str
+FILENAME = 'red_cap.txt'
+with open(FILENAME) as f:
+    plaintext = f.read()
 
 def set_stage(i):
     st.session_state['stage'] = i
 
-def set_stage_upload_text():
-    set_stage(1)
+def set_stage_upload_text(text):
+    st.session_state['text'] = text
     ge = GrammarExcerciser(text)
-    st.write('generate excercises out of your text')
-
-    st.session_state['past_excercises'] = ge.get_past_tenses_excercises(2)
+    if ge.df.shape[0] < 100:
+        set_stage(1)   
+        st.session_state['error_type'] = 'too_short'     
+    else:
+        set_stage(2)
+        st.session_state['past_excercises'] = ge.get_past_tenses_excercises(2)
 
 def set_stage_default_text():
-    set_stage(1)
-    FILENAME = 'red_cap.txt'
-
-    # read file into str
-    with open(FILENAME) as f:
-        plaintext = f.read()
+    set_stage(2)    
     ge = GrammarExcerciser(plaintext)
     st.write('generate excercises out of Red Cap fairytale (default)')
 
     st.session_state['past_excercises'] = ge.get_past_tenses_excercises(2)
 
-
-# with open("past.json") as json_file:
-#     past_excercises = json.load(json_file)
-
-# with open("prep.json") as json_file :
-#   prep_excercises = json.load(json_file)
+def try_another_text():
+    set_stage(0)
+    st.session_state['text'] = ''
 
 st.header('English language excercises out of a text')
-st.write('Here you can practice your English solving excercises generated from a text. By design you should be able to upload a text of yours. Waiting for this cool feature to be implemented you can enjoy excercises made of The Little Red Cap by Wilhelm Grimm')
+st.write('Here you can practice your English solving excercises generated from a text. Please paste the text you\'d like to practice on into the form below. In case you have no proper text at hand you can still enjoy the excercises made of The Little Red Cap by Wilhelm Grimm')
 
-with st.form('starting_form'):
-    text = st.text_area(label='Put your text here')
-    st.form_submit_button('Get excercises', on_click=set_stage_upload_text)
-    
-st.button('Use default text', on_click=set_stage_default_text)
+text = st.text_area('nolabel', value=st.session_state['text'], label_visibility="hidden")
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.button('Get excercises', on_click=set_stage_upload_text, args=[text])
+with col2:
+    st.button('Use default text', on_click=set_stage_default_text)
+with col3:
+    st.button('Read default text', on_click=set_stage, args=[1])
 
-if st.session_state['stage'] >= 1:
+if st.session_state['stage'] == 1:
+    if st.session_state['error_type'] == 'too_short':
+        st.write('Sorry, your text seems too short. Please try a text of at least 100 sentences')
+        st.button('Try another text', on_click=try_another_text)
+    else:
+        st.write(plaintext)
+        st.button('Hide text', on_click=set_stage, args=[0])
+
+if st.session_state['stage'] >= 2:
 
     with st.form('ex_form'):
         st.subheader('Choose the right past tense')
 
-        for task in st.session_state['past_excercises']:
+        for j in range(len(st.session_state['past_excercises'])):
+            task = st.session_state['past_excercises'][j]
             col1, col2 = st.columns(2)
             with col1:
                 st.write('')
@@ -71,12 +79,13 @@ if st.session_state['stage'] >= 1:
                     option = task['options'][i]
                     task['result'][i] = st.selectbox('nolabel', 
                                                     ['–––'] + option, 
+                                                    key=str(j) + str(i),
                                                     label_visibility="hidden")                    
             '---'    
 
-        st.form_submit_button("Submit", on_click=set_stage, args=[2])
+        st.form_submit_button("Submit", on_click=set_stage, args=[3])
         
-if st.session_state['stage'] >= 2:
+if st.session_state['stage'] >= 3:
     for task in st.session_state['past_excercises']:
         for i in range(len(task['options'])):
             if task['result'][i] == task['answers'][i]:
