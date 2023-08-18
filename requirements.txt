@@ -2,7 +2,7 @@ gensim==4.3.1
 numpy==1.20.1
 pandas==1.2.4
 pyinflect==0.5.1
-spacy==3.5.1
+spacy==3.5.0
 spacy-legacy==3.0.12
 spacy-loggers==1.0.4
 streamlit==1.24.1
