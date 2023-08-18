@@ -6,4 +6,4 @@ spacy==3.5.1
 spacy-legacy==3.0.12
 spacy-loggers==1.0.4
 streamlit==1.24.1
-en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.2.0/en_core_web_sm-2.2.0.tar.gz
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0.tar.gz
