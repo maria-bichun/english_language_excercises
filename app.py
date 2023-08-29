@@ -21,10 +21,10 @@ FILENAME = 'red_cap.txt'
 with open(FILENAME) as f:
     plaintext = f.read()
 
-exercise_messages = {'past': 'Select the past tense',
-                     'passive': 'Select the verb form',
-                     'be': 'Type the proper form of the verb to be',
-                     'prep': 'Type the correct preposition'}
+exercise_messages = {'past': ['Past tenses', 'Select the past tense'],
+                     'passive': ['Passive voice', 'Select the verb form'],
+                     'be': ['Verb TO BE', 'Type the proper form of the verb to be'],
+                     'prep': ['Prepositions', 'Type the correct preposition']}
 
 def type_excercises():
     ex_list = []
@@ -41,7 +41,7 @@ def type_excercises():
             ex_list.append('be')
         elif item == 'Prepositions':
             ex_list.append('prep')
-    return set(ex_list)
+    return list(set(ex_list))
 
 def get_excercises(ge):
     all_exs = []
@@ -122,47 +122,58 @@ if st.session_state['stage'] == 1:
 
 if st.session_state['stage'] >= 2:
 
-    st.write(st.session_state['ex_types'])
-    st.write(st.session_state['excercises'])
+    # st.write(st.session_state['ex_types'])
+    # st.write(st.session_state['excercises'])
 
-    # with st.form('ex_form'):
-    #     st.subheader('Choose the right past tense')
-
-    #     for j in range(len(st.session_state['past_excercises'])):
-    #         task = st.session_state['past_excercises'][j]
-    #         col1, col2 = st.columns(2)
-    #         with col1:
-    #             st.write('')
-    #             st.write(task['sentence'])
-                    
-    #         with col2:
-    #             for i in range(len(task['options'])):
-    #                 option = task['options'][i]
-    #                 task['result'][i] = st.selectbox('nolabel', 
-    #                                                 ['–––'] + option, 
-    #                                                 key=str(j) + str(i),
-    #                                                 label_visibility="hidden")                    
-    #         '---'    
-
-    #     st.form_submit_button("Submit", on_click=set_stage, args=[3])
+    with st.form('ex_form'):
+        for num in range(len(st.session_state['excercises'])):
+            excercise = st.session_state['excercises'][num]
+            st.subheader(exercise_messages[st.session_state['ex_types'][num]][1])
+            
+            for j in range(len(excercise)):
+                task = excercise[j]
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write('')
+                    st.write(task['sentence'])
+                        
+                with col2:
+                    if st.session_state['ex_types'][num] in ['past', 'passive']:
+                        for i in range(len(task['options'])):
+                            option = task['options'][i]                        
+                            task['result'][i] = st.selectbox('nolabel', 
+                                ['–––'] + option, 
+                                key=str(num) + str(j) + str(i),
+                                label_visibility="hidden") 
+                    elif st.session_state['ex_types'][num] in ['be', 'prep']: 
+                        for i in range(len(task['answers'])):
+                            task['result'][i] = st.text_input('nolabel', 
+                                '', 
+                                key=str(num) + str(j) + str(i),
+                                label_visibility="hidden")                  
+                '---'    
+        st.form_submit_button("Submit", on_click=set_stage, args=[3])
         
 if st.session_state['stage'] >= 3:
-    for task in st.session_state['past_excercises']:
-        for i in range(len(task['options'])):
-            if task['result'][i] == task['answers'][i]:
-                task['total'] += 1                    
-    st.write(f"{sum([task['total'] for task in st.session_state['past_excercises']])} correct answers out of {sum([len(task['result']) for task in st.session_state['past_excercises']])}")
+    for num in range(len(st.session_state['excercises'])):
+        excercise = st.session_state['excercises'][num]
+        ex_title = exercise_messages[st.session_state['ex_types'][num]][0]
+        for task in excercise:
+            for i in range(len(task['answers'])):
+                if task['result'][i] == task['answers'][i]:
+                    task['total'] += 1                    
+        st.write(f"**{ex_title}**: {sum([task['total'] for task in excercise])} correct answers of {sum([len(task['result']) for task in excercise])}")
 
-    for task in st.session_state['past_excercises']:
-        sentence_slices = task['sentence'].split('_____')
-        correct_sent = []
-        for i in range(len(task['options'])):
-            correct_sent.append(sentence_slices[i])
-            correct_sent.append(f"**:green[{task['answers'][i]}]**")
-            if task['result'][i] != task['answers'][i]:
-                correct_sent.append(f"_(you've chosen **:red[{task['result'][i]}]**)_")
-        correct_sent.append(sentence_slices[-1])
-        st.write(' '.join(correct_sent))
+        for task in excercise:
+            sentence_slices = task['sentence'].split('_____')
+            correct_sent = []
+            for i in range(len(task['answers'])):
+                correct_sent.append(sentence_slices[i])
+                correct_sent.append(f"**:green[{task['answers'][i]}]**")
+                if task['result'][i] != task['answers'][i]:
+                    correct_sent.append(f"_(you've chosen **:red[{task['result'][i]}]**)_")
+            correct_sent.append(sentence_slices[-1])
+            st.write(' '.join(correct_sent))
 
     st.button('Try again', on_click=set_stage, args=[0])
 
